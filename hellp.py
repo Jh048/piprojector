@@ -30,8 +30,8 @@ while True:
 
     # 2. Get the tip of the index and middle fingers
     if len(lmList) != 0:
-        x1, y1 = lmList[8][1:]
-        x2, y2 = lmList[12][1:]
+        x1, y1 = lmList[4][1:]
+        x2, y2 = lmList[8][1:]
         #print(x1, y1, x2, y2)
 
         # 3. Check which fingers are up
@@ -41,7 +41,7 @@ while True:
         (255, 0, 255), 2)
 
         # 4. Only Index Finger : Moving Mode
-        if fingers[1] == 1 and fingers[2] == 0:
+        if fingers[0] == 0 and fingers[2] == 0:
             # 5. Convert Coordinates
             x3 = np.interp(x1, (frameR, wCam - frameR), (0, wScr))
             y3 = np.interp(y1, (frameR, hCam - frameR), (0, hScr))
@@ -51,19 +51,21 @@ while True:
             clocY = plocY + (y3 - plocY) / smoothening
 
             # 7. Move Mouse
-            autopy.mouse.move(clocX, clocY)
+            #autopy.mouse.move(clocX, clocY)
+            #autopy.mouse.move(clocX, clocY)
             cv2.circle(img, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
+            plocX, plocY = clocX, clocY
 
         # 8. Both Index and middle fingers are up : Clicking Mode
-        if fingers[1] == 1 and fingers[2] == 1:
+        #if fingers[1] == 1 and fingers[2] == 1:
             # 9. Find distance between fingers
-            length, img, lineInfo = detector.findDistance(8, 12, img)
+            length, img, lineInfo = detector.findDistance(4, 8, img)
             print(length)
             # 10. Click mouse if distance short
-            if length < 40:
+            if length < 10:
                 cv2.circle(img, (lineInfo[4], lineInfo[5]),
                 15, (0, 255, 0), cv2.FILLED)
-                autopy.mouse.click()
+                #autopy.mouse.click()
 
     # 11. Frame Rate
     cTime = time.time()
