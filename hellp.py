@@ -41,6 +41,7 @@ while True:
         (255, 0, 255), 2)
 
         # 4. Only Index Finger : Moving Mode
+        #if fingers[0] == 0 and fingers[2] == 0:
         if fingers[0] == 0 and fingers[2] == 0:
             # 5. Convert Coordinates
             x3 = np.interp(x1, (frameR, wCam - frameR), (0, wScr))
@@ -52,7 +53,7 @@ while True:
 
             # 7. Move Mouse
             #autopy.mouse.move(clocX, clocY)
-            #autopy.mouse.move(clocX, clocY)
+            autopy.mouse.move(clocX, clocY)
             cv2.circle(img, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
             plocX, plocY = clocX, clocY
 
@@ -60,12 +61,12 @@ while True:
         #if fingers[1] == 1 and fingers[2] == 1:
             # 9. Find distance between fingers
             length, img, lineInfo = detector.findDistance(4, 8, img)
-            print(length)
+            #print(length)
             # 10. Click mouse if distance short
-            if length < 10:
+            if length < 15:
                 cv2.circle(img, (lineInfo[4], lineInfo[5]),
                 15, (0, 255, 0), cv2.FILLED)
-                #autopy.mouse.click()
+                autopy.mouse.click()
 
     # 11. Frame Rate
     cTime = time.time()
