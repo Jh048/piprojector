@@ -3,7 +3,7 @@ import numpy as np
 import HandTrackingModule as htm
 import time
 import autopy
-
+#a
 #########################
 wCam, hCam = 640, 480
 frameR = 100 # Frame Reduction
