@@ -75,7 +75,7 @@ def run_virtual_mouse():
 if __name__ == "__main__":
     run_virtual_mouse()
 
-AiAssistant.py
+#AiAssistant.py
 import speech_recognition as sr
 import openai
 import datetime
