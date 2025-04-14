@@ -1,6 +1,5 @@
 import os
 import datetime
-import openai
 import sounddevice as sd
 import numpy as np
 import whisper
@@ -8,14 +7,9 @@ import queue
 import threading
 import wave
 import time
-from openai import OpenAI
-from dotenv import load_dotenv
+from transformers import pipeline
 import warnings
 warnings.filterwarnings("ignore", message="FP16 is not supported on CPU; using FP32 instead")
-
-# Load environment variables
-load_dotenv()  # Load variables from .env into the environment
-client = OpenAI()
 
 # Create folders if they don't exist
 os.makedirs("MeetingNotes", exist_ok=True)
@@ -46,16 +40,20 @@ def save_audio(filename):
     wf.setsampwidth(2)
     wf.setframerate(samplerate)
 
+    total_frames = 0
     while not recording_queue.empty():
         data = recording_queue.get()
+        total_frames += len(data)
         wf.writeframes((data * 32767).astype(np.int16).tobytes())
 
     wf.close()
+    duration = total_frames / samplerate
+    print(f"[Save] Final audio duration: {duration:.2f} seconds")
 
-# Transcribe live audio using Whisper
-def transcribe_live(model):
+# Transcribe live audio using Whisper and save with timestamps
+def transcribe_live(model, transcript_filename):
     audio_buffer = np.empty((0, channels), dtype=np.float32)
-    interval = 5  # seconds
+    interval =  5 # seconds
 
     def run_transcription():
         nonlocal audio_buffer
@@ -76,7 +74,15 @@ def transcribe_live(model):
                 wf.close()
 
                 result = model.transcribe(audio_path)
-                print(f"[Live] {result['text'].strip()}")
+                text = result["text"].strip()
+                elapsed_time = time.time() - start_time
+                timestamp = str(datetime.timedelta(seconds=elapsed_time))
+
+                if text:
+                    formatted = f"[{timestamp}] Speaker: {text}"
+                    print(f"[Live] {formatted}")
+                    with open(transcript_filename, "a") as f:
+                        f.write(formatted + "\n")
 
             except Exception as e:
                 print(f"[Live] Error: {e}")
@@ -93,26 +99,20 @@ def transcribe_live(model):
     threading.Thread(target=buffer_audio, daemon=True).start()
     threading.Thread(target=run_transcription, daemon=True).start()
 
-# Function to generate a summary using GPT-3.5
+# Local summarizer using Hugging Face BART
 def summarize_text(text):
-    if not text.strip():  # Check for empty text
+    if not text.strip():
         return "No transcript available to summarize."
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You summarize meetings."},
-                {"role": "user", "content": f"Summarize this meeting:\n{text}"}
-            ],
-            temperature=0.7
-        )
-        return response.choices[0].message.content.strip()
+        summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+        summary = summarizer(text, max_length=130, min_length=30, do_sample=False)
+        return summary[0]['summary_text']
     except Exception as e:
         print(f"[Summary] Error: {e}")
         return "Error generating summary."
 
-# Main function to handle the whole process
+# Main function
 def main():
     global is_recording, start_time
     now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -127,7 +127,7 @@ def main():
 
     # Start recording and transcription
     threading.Thread(target=record_audio, daemon=True).start()
-    transcribe_live(model)
+    transcribe_live(model, transcript_filename)
 
     try:
         while True:
@@ -142,28 +142,30 @@ def main():
 
         print("[Assistant] Transcribing final audio using Whisper...")
         result = model.transcribe(audio_filename)
-        transcript = result["text"].strip()
+
+        # Format transcript with line breaks per segment
+        segments = result.get("segments", [])
+        transcript = "\n".join(
+            [f"[{datetime.datetime.now().strftime('%H:%M:%S')}] Speaker: {seg['text'].strip()}" for seg in segments]
+        ) if segments else result["text"].strip()
 
         if transcript:
             print("[Whisper] Final transcript:")
             print(transcript)
 
-            # Save the transcript to a file
-            with open(transcript_filename, "w") as f:
-                f.write(transcript)
+            with open(transcript_filename, "a") as f:
+                f.write("\n[Final Transcript]\n" + transcript)
 
-            print("[Assistant] Generating summary using GPT...")
+            print("[Assistant] Generating summary using local BART model...")
             summary = summarize_text(transcript)
 
-            # Save the summary to a file
             with open(summary_filename, "w") as f:
                 f.write(summary)
 
         else:
             print("[Assistant] No transcript to summarize.")
-            with open(transcript_filename, "w") as f:
-                f.write("")
-
+            with open(transcript_filename, "a") as f:
+                f.write("\n[Final Transcript] None\n")
             with open(summary_filename, "w") as f:
                 f.write("")
 
