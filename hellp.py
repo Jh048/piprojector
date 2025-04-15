@@ -19,10 +19,10 @@ cap = cv2.VideoCapture(1)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, wCam)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, hCam)
 pTime = 0
-detector = htm.handDetector(maxHands=1)
+detector = htm.handDetector(maxHands=2)
 wScr, hScr = autopy.screen.size()
 #print(wScr, hScr)
-def zoom_image(img, zoom_factor=1.5):
+def zoom_image(img, zoom_factor=0.5):
     h, w = img.shape[:2]
     centerX, centerY = w // 2, h // 2
 
