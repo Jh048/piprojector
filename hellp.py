@@ -3,10 +3,11 @@ import numpy as np
 import HandTrackingModule as htm
 import time
 import autopy
-#a
+
 #########################
 wCam, hCam = 640, 480
 frameR = 100 # Frame Reduction
+wframe = 120
 smoothening = 7
 #########################
 
@@ -15,16 +16,28 @@ plocX, plocY = 0, 0
 clocX, clocY = 0, 0
 
 cap = cv2.VideoCapture(1)
-cap.set(3, wCam)
-cap.set(4, hCam)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, wCam)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, hCam)
 pTime = 0
 detector = htm.handDetector(maxHands=1)
 wScr, hScr = autopy.screen.size()
 #print(wScr, hScr)
+def zoom_image(img, zoom_factor=1.5):
+    h, w = img.shape[:2]
+    centerX, centerY = w // 2, h // 2
+
+    radiusX, radiusY = int(w / (2 * zoom_factor)), int(h / (2 * zoom_factor))
+    minX, maxX = centerX - radiusX, centerX + radiusX
+    minY, maxY = centerY - radiusY, centerY + radiusY
+
+    cropped = img[minY:maxY, minX:maxX]
+    return cv2.resize(cropped, (w, h))  # Resize back to original size
 
 while True:
     # 1. Find hand Landmarks
     success, img = cap.read()
+    img = cv2.rotate(img, cv2.ROTATE_180)  # ✅ Rotate 180 degrees  
+    img = zoom_image(img, zoom_factor=1.2)
     img = detector.findHands(img)
     lmList, bbox = detector.findPosition(img)
 
@@ -37,7 +50,7 @@ while True:
         # 3. Check which fingers are up
         fingers = detector.fingersUp()
         #print(fingers)
-        cv2.rectangle(img, (frameR, frameR), (wCam - frameR, hCam - frameR),
+        cv2.rectangle(img, (wframe, frameR), (wCam - wframe, hCam - frameR),
         (255, 0, 255), 2)
 
         # 4. Only Index Finger : Moving Mode
@@ -63,7 +76,7 @@ while True:
             length, img, lineInfo = detector.findDistance(4, 8, img)
             #print(length)
             # 10. Click mouse if distance short
-            if length < 15:
+            if length < 17:
                 cv2.circle(img, (lineInfo[4], lineInfo[5]),
                 15, (0, 255, 0), cv2.FILLED)
                 autopy.mouse.click()
